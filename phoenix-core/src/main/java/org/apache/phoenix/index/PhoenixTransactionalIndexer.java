@@ -221,6 +221,7 @@ public class PhoenixTransactionalIndexer extends BaseRegionObserver {
                 Scan scan = new Scan();
                 // Project all mutable columns
                 for (ColumnReference ref : mutableColumns) {
+                    //TODO: samarth confirm this is ok
                     scan.addColumn(ref.getFamily(), ref.getQualifier());
                 }
                 // Project empty key value column

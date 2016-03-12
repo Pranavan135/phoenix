@@ -60,6 +60,7 @@ import org.apache.phoenix.schema.PColumnFamily;
 import org.apache.phoenix.schema.PDatum;
 import org.apache.phoenix.schema.PName;
 import org.apache.phoenix.schema.PTable;
+import org.apache.phoenix.schema.PTable.StorageScheme;
 import org.apache.phoenix.schema.RowKeySchema;
 import org.apache.phoenix.schema.RowKeySchema.RowKeySchemaBuilder;
 import org.apache.phoenix.schema.SaltingUtil;
@@ -67,6 +68,7 @@ import org.apache.phoenix.schema.SortOrder;
 import org.apache.phoenix.schema.TableProperty;
 import org.apache.phoenix.schema.ValueSchema.Field;
 import org.apache.phoenix.schema.types.PDataType;
+import org.apache.phoenix.schema.types.PInteger;
 import org.apache.phoenix.schema.types.PVarbinary;
 import org.apache.phoenix.schema.types.PVarchar;
 
@@ -364,7 +366,7 @@ public class SchemaUtil {
                 }
             } else {
                 try {
-                    return table.getColumnFamily(familyName.getString()).getColumn(column.getName().getString()).getName().getString();
+                    return table.getColumnFamily(familyName.getString()).getPColumnForColumnName(column.getName().getString()).getName().getString();
                 } catch (ColumnFamilyNotFoundException e) {
                     continue; // Shouldn't happen
                 } catch (ColumnNotFoundException e) {
@@ -556,7 +558,7 @@ public class SchemaUtil {
     
     public static boolean columnExists(PTable table, String columnName) {
         try {
-            table.getColumn(columnName);
+            table.getPColumnForColumnName(columnName);
             return true;
         } catch (ColumnNotFoundException e) {
             return false;
@@ -897,4 +899,37 @@ public class SchemaUtil {
         PName schemaName = dataTable.getSchemaName();
         return getTableKey(tenantId == null ? ByteUtil.EMPTY_BYTE_ARRAY : tenantId.getBytes(), schemaName == null ? ByteUtil.EMPTY_BYTE_ARRAY : schemaName.getBytes(), dataTable.getTableName().getBytes());
     }
+    
+    
+    /**
+     * Return a map of column family -> next column qualifier number to use.
+     */
+    public static Map<String, Integer> getNextColumnQualifiers(PTable table) {
+        Map<String, Integer> map = Maps.newHashMapWithExpectedSize(table.getColumns().size());
+        for (PColumnFamily f : table.getColumnFamilies()) {
+            //TODO: samarth change this when making column qualifiers 1-based
+            final int size = f.getColumns().size();
+            map.put(f.getName().getString(), size);
+        }
+        return map;
+    }
+    
+    public static boolean usesEncodedColumnNames(PTable table) {
+        return table.getStorageScheme() != null && table.getStorageScheme() == StorageScheme.ENCODED_COLUMN_NAMES;
+    }
+    
+    public static byte[] getColumnQualifier(PColumn column, PTable table) {
+      checkArgument(!SchemaUtil.isPKColumn(column), "No column qualifiers for PK columns");
+      return usesEncodedColumnNames(table) ? PInteger.INSTANCE.toBytes(column.getColumnQualifier()) : column.getName().getBytes();
+    }
+    
+    public static byte[] getColumnQualifier(PColumn column, boolean encodedColumnName) {
+        checkArgument(!SchemaUtil.isPKColumn(column), "No column qualifiers for PK columns");
+        return encodedColumnName ? PInteger.INSTANCE.toBytes(column.getColumnQualifier()) : column.getName().getBytes(); 
+    }
+    
+//    public static String getColumnQualifierString(PColumn column, boolean encodedColumnName) {
+//        checkArgument(!SchemaUtil.isPKColumn(column), "No column qualifiers for PK columns");
+//        return encodedColumnName ? PInteger.INSTANCE.toBytes(column.getColumnQualifier()) : column.getName().getBytes(); 
+//    }
 }
