@@ -363,8 +363,7 @@ public class PhoenixStatement implements Statement, SQLCloseable {
                                 throw e;
                             }
                         }
-                    }, PhoenixContextExecutor.inContext(),
-                        Tracing.withTracing(connection, this.toString()));
+                    }, PhoenixContextExecutor.inContext());
         } catch (Exception e) {
             Throwables.propagateIfInstanceOf(e, SQLException.class);
             throw Throwables.propagate(e);

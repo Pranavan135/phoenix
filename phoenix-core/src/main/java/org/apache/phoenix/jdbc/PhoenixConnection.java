@@ -529,7 +529,7 @@ public class PhoenixConnection implements Connection, MetaDataMutated, SQLClosea
                 mutationState.commit();
                 return null;
             }
-        }, Tracing.withTracing(this, "committing mutations"));
+        });
         statementExecutionCounter = 0;
     }
 
